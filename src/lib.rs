@@ -17,34 +17,47 @@ extern crate serde;
 /// example of how to create templates:
 ///
 /// ```
+///
+/// fn main() {
+///     let mut router = Router::new();
+///     router.get("/user", user_handler, "user");
+///
+///     let mut chain = Chain::new(router);
+///     let teng = TeraEngine::new("src/examples/templates/**/*");
+///     chain.link_after(teng);
+///
+///     Iron::new(chain).http("localhost:5000").unwrap();
+/// }
+///
+///
+/// fn user_handler(_: &mut Request) -> IronResult<Response> {
+///     let mut resp = Response::new();
+///
+///     let mut context = Context::new();
+///     context.add("username", &"Bob");
+///     context.add("numbers", &vec![1, 2, 3]);
+///     context.add("bio", &"<script>alert('pwnd');</script>");
+///
+///     resp.set_mut(Template::new("users/profile.html", TemplateMode::from_context(context)))
+///         .set_mut(status::Ok);
+///     Ok(resp)
+/// }
 /// #[derive(Serialize)]
 /// struct Product {
 ///     name: String,
 ///     value: i32,
 /// }
-///
-/// fn example() {
-///     // Context option 1
-///     let mut context = Context::new();
-///     context.add("firstname", &"Foo");
-///     context.add("lastname", &"Bar");
-///
-///     let t = Template::new("index", TemplateMode::TeraContext(context));
-///
-///     // Context option 2
-///     let mut c2 = Context::new();
-///     c2.add("firstname", &"Foo");
-///     c2.add("lastname", &"Bar");
-///
-///     let t4 = Template::new("index", TemplateMode::from_context(c2));
+/// fn produce_handler(_: &mut Request) -> IronResult<Response> {
+///     let mut resp = Response::new();
 ///
 ///     // Using serialized values
 ///     let product = Product {
 ///         name: "Foo".into(),
 ///         value: 42,
-///    };
-///     // option 2
-///     let t2 = Template::new("index", TemplateMode::from_serial(&product));
+///     };
+///     resp.set_mut(Template::new("product.html", TemplateMode::from_serial(&product)))
+///         .set_mut(status::Ok);
+///     Ok(resp)
 /// }
 /// ```
 
@@ -135,7 +148,6 @@ impl AfterMiddleware for TeraEngine {
         Err(err)
     }
 }
-
 
 // #[cfg(test)]
 // mod tests {

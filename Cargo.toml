@@ -6,6 +6,7 @@ description = "This is an Iron middleware for the Tera templating library"
 repository = "https://github.com/leshow/iron-tera"
 keywords = ["iron", "tera", "middleware", "templating"]
 license = "MIT"
+exclude = ["src/examples"]
 
 [dependencies]
 iron = "0.4.0"
