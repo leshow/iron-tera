@@ -71,6 +71,7 @@ use tera::{Tera, Context};
 use serde::Serialize;
 use serde_json::{Value, to_value};
 
+#[derive(Clone)]
 pub enum TemplateMode {
     TeraContext(Context),
     Serialized(Value),
@@ -85,6 +86,7 @@ impl TemplateMode {
     }
 }
 
+#[derive(Clone)]
 pub struct Template {
     mode: TemplateMode,
     name: String,
@@ -149,9 +151,68 @@ impl AfterMiddleware for TeraEngine {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     #[test]
-//     fn it_works() {
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use super::{TeraEngine, Template, TemplateMode};
+    use iron::prelude::*;
+    use tera::{Tera, Context};
+
+    #[derive(Serialize)]
+    struct Product {
+        name: String,
+        value: i32,
+    }
+
+    fn test_resp() -> IronResult<Response> {
+        let resp = Response::new();
+
+        let mut context = Context::new();
+        context.add("username", &"Foo");
+        context.add("bio", &"Bar");
+        context.add("numbers", &vec![1, 2, 3]);
+
+        Ok(resp.set(Template::new("users/foo.html", TemplateMode::from_context(context))))
+    }
+
+    #[test]
+    fn example() {
+        let mut resp = test_resp().ok().expect("response expected");
+
+        match resp.get::<TeraEngine>() {
+            Ok(h) => {
+                assert_eq!(h.name.unwrap(), "users/profile.html".to_string());
+                assert_eq!(h.value
+                               .as_object()
+                               .unwrap()
+                               .get(&"Foo".to_string())
+                               .unwrap()
+                               .as_string()
+                               .unwrap(),
+                           "Bar");
+            }
+            _ => panic!("template expected"),
+        }
+        // let teng = TeraEngine::new("src/test_template/**/*");
+        // // Context option 1
+        // let mut context = Context::new();
+        // context.add("firstname", &"Foo");
+        // context.add("lastname", &"Bar");
+        //
+        // let t = Template::new("index", TemplateMode::TeraContext(context));
+        //
+        // // Context option 2
+        // let mut c2 = Context::new();
+        // c2.add("firstname", &"Foo");
+        // c2.add("lastname", &"Bar");
+        //
+        // let t4 = Template::new("index", TemplateMode::from_context(c2));
+        //
+        // // Using serialized values
+        // let product = Product {
+        //     name: "Foo".into(),
+        //     value: 42,
+        // };
+        // // option 2
+        // let t2 = Template::new("index", TemplateMode::from_serial(&product));
+    }
+}
