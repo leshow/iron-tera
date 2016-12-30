@@ -7,6 +7,10 @@ This is a [Tera](https://github.com/Keats/tera/) middleware for [Iron](https://g
 After the initial template engine is created, you can render templates in a given handler using either a Tera `Context`, or a value that implementes serde's `Serialize`.
 
 ```rust
+extern crate iron_tera;
+
+use iron_tera::{TeraEngine, Template, TemplateMode};
+
 fn main() {
     let mut router = Router::new();
     router.get("/user", user_handler, "user");
