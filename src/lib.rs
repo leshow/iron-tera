@@ -14,10 +14,10 @@ extern crate router;
 
 extern crate serde;
 
-/// example of how to create templates:
+/// # Examples
 ///
-/// ```
-///
+/// Building a template from a context.
+/// ```rust
 /// fn main() {
 ///     let mut router = Router::new();
 ///     router.get("/user", user_handler, "user");
@@ -28,7 +28,6 @@ extern crate serde;
 ///
 ///     Iron::new(chain).http("localhost:5000").unwrap();
 /// }
-///
 ///
 /// fn user_handler(_: &mut Request) -> IronResult<Response> {
 ///     let mut resp = Response::new();
@@ -42,11 +41,17 @@ extern crate serde;
 ///         .set_mut(status::Ok);
 ///     Ok(resp)
 /// }
+/// ```
+/// # Examples
+///
+/// Note that serialize requires serde.
+/// ```rust
 /// #[derive(Serialize)]
 /// struct Product {
 ///     name: String,
 ///     value: i32,
 /// }
+///
 /// fn produce_handler(_: &mut Request) -> IronResult<Response> {
 ///     let mut resp = Response::new();
 ///
@@ -71,12 +76,17 @@ use tera::{Tera, Context};
 use serde::Serialize;
 use serde_json::{Value, to_value};
 
+/// There are 2 main ways to pass data to generate a template.
 #[derive(Clone)]
 pub enum TemplateMode {
+    /// TeraContext constructor takes a `Context`
     TeraContext(Context),
+    /// Serialized constructor takes a `Value` from `serde_json`
     Serialized(Value),
 }
 
+/// TemplateMode should only ever be created from these smart constructors,
+/// not with the enums type constructors.
 impl TemplateMode {
     pub fn from_context(context: Context) -> TemplateMode {
         TemplateMode::TeraContext(context)
@@ -86,6 +96,7 @@ impl TemplateMode {
     }
 }
 
+/// Our template holds a name (path to template) and a mode (constructed with `from_context` or `from_serial`)
 #[derive(Clone)]
 pub struct Template {
     mode: TemplateMode,
@@ -101,10 +112,12 @@ impl Template {
     }
 }
 
+/// TeraEngine holds the Tera struct so that it can be used by many handlers without explicitly passing
 pub struct TeraEngine {
     pub tera: Tera,
 }
 
+/// `compile_templates!` is used to parse the contents of a dir for all templates.
 impl TeraEngine {
     pub fn new(dir: &str) -> TeraEngine {
         TeraEngine { tera: compile_templates!(dir) }
@@ -121,8 +134,11 @@ impl Modifier<Response> for Template {
     }
 }
 
-
+/// The middleware implementation for TeraEngine
 impl AfterMiddleware for TeraEngine {
+    /// This is where all the magic happens. We extract `TeraEngine` from Iron's `Response`,
+    /// determine what `TemplateMode` we should render in, and pass the appropriate values to
+    /// tera's render methods.
     fn after(&self, _: &mut Request, mut resp: Response) -> IronResult<Response> {
         let wrapper = resp.extensions.remove::<TeraEngine>().and_then(|t| {
             match t.mode {
