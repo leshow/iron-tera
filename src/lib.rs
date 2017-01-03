@@ -1,18 +1,22 @@
-//! # Examples
+//! ## Examples
 //!
-//! Building a template from a context.
-//! ```
+//! ```rust,norun
+//!
+//! extern crate iron_tera;
+//! use iron_tera::{TeraEngine, Template, TemplateMode};
+//!
 //! fn main() {
 //!     let mut router = Router::new();
 //!     router.get("/user", user_handler, "user");
 //!
 //!     let mut chain = Chain::new(router);
+//!     // TeraEngine will panic here if parsing fails, it's part of the Tera library
 //!     let teng = TeraEngine::new("src/examples/templates/**/*");
 //!     chain.link_after(teng);
 //!
 //!     Iron::new(chain).http("localhost:5000").unwrap();
 //! }
-//!
+//! // Building a template from a context.
 //! fn user_handler(_: &mut Request) -> IronResult<Response> {
 //!     let mut resp = Response::new();
 //!
@@ -25,11 +29,7 @@
 //!         .set_mut(status::Ok);
 //!     Ok(resp)
 //! }
-//! ```
-//! # Examples
-//!
-//! Note that serialize requires serde.
-//! ```
+//! // The following uses serde's Serialize
 //! #[derive(Serialize)]
 //! struct Product {
 //!     name: String,
