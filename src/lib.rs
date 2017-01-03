@@ -1,7 +1,6 @@
 //! ## Examples
 //!
-//! ```rust,norun
-//!
+//! ```rust
 //! extern crate iron_tera;
 //! use iron_tera::{TeraEngine, Template, TemplateMode};
 //!
