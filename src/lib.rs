@@ -53,16 +53,11 @@
 #![feature(proc_macro)]
 #![allow(dead_code)]
 
-#[macro_use]
-extern crate serde_derive;
-
 extern crate serde_json;
 
-#[macro_use]
-extern crate tera;
+#[macro_use] extern crate tera;
 
 extern crate iron;
-extern crate router;
 
 extern crate serde;
 

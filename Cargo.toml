@@ -12,8 +12,6 @@ exclude = ["src/test_template"]
 
 [dependencies]
 iron = "0.4.0"
-router = "0.4.0"
 tera = "0.6.1"
 serde = "0.8"
 serde_json = "0.8"
-serde_derive = "0.8"
