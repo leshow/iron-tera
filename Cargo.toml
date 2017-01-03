@@ -1,6 +1,6 @@
 [package]
 name = "iron-tera"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Evan Cameron <cameron.evan@gmail.com>"]
 description = "This is an Iron middleware for the Tera templating library"
 repository = "https://github.com/leshow/iron-tera"
