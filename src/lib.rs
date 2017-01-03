@@ -15,7 +15,7 @@
 //!
 //!     Iron::new(chain).http("localhost:5000").unwrap();
 //! }
-//! // Building a template from a context.
+//! // Rendering a template from a context.
 //! fn user_handler(_: &mut Request) -> IronResult<Response> {
 //!     let mut resp = Response::new();
 //!
@@ -34,7 +34,7 @@
 //!     name: String,
 //!     value: i32,
 //! }
-//!
+//! // Rendering from a struct that implements Serialize
 //! fn produce_handler(_: &mut Request) -> IronResult<Response> {
 //!     let mut resp = Response::new();
 //!
