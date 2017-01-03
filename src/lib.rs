@@ -1,7 +1,7 @@
 //! # Examples
 //!
 //! Building a template from a context.
-//! ```rust
+//! ```
 //! fn main() {
 //!     let mut router = Router::new();
 //!     router.get("/user", user_handler, "user");
@@ -29,7 +29,7 @@
 //! # Examples
 //!
 //! Note that serialize requires serde.
-//! ```rust
+//! ```
 //! #[derive(Serialize)]
 //! struct Product {
 //!     name: String,
