@@ -4,6 +4,8 @@ iron-tera
 
 This is a [Tera](https://github.com/Keats/tera/) middleware for [Iron](https://github.com/iron/iron/).
 
+Check me out on [crates.io](https://crates.io/crates/iron-tera) or read the [documentation](https://docs.rs/iron-tera/).
+
 After the initial template engine is created, you can render templates in a given handler using either a Tera `Context`, or a value that implementes serde's `Serialize`.
 
 ```rust
