@@ -114,8 +114,9 @@ pub struct TeraEngine {
 
 /// `compile_templates!` is used to parse the contents of a dir for all templates.
 impl TeraEngine {
-    pub fn new(dir: &str) -> TeraEngine {
-        TeraEngine { tera: compile_templates!(dir) }
+    /// Take a `String` and convert to a slice or preferably a `&str`
+    pub fn new<S: AsRef<str>>(dir: &S) -> TeraEngine {
+        TeraEngine { tera: compile_templates!(dir.as_ref()) }
     }
 }
 
