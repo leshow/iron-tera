@@ -1,26 +1,47 @@
-//! ## Examples
+//! Please contact me on github and file any issues if you find some, I'm also open to PRs or other suggestions.
+//! CHANGELOG (0.2.0):
+//! If you're upgrading from iron-tera 0.1.4, the API has changed slightly for serialized values.
+//! Serde 0.9.0 to_value returns a `Result`, this means you need to handle the possiblity of a serialization failure.
+//! Since we're still pre-1.0 and the API isn't completely stable, I've only incremented the minor version number.
 //!
+//! ## Examples
+//! The following is a complete working example that I've tested with serde 0.9.0, tera 0.7.0 and iron-tera 0.2.0
 //! ```rust
+//! #[macro_use]
+//! extern crate tera;
+//!
+//! extern crate iron;
+//! extern crate router;
+//! #[macro_use]
+//! extern crate serde_json;
 //! extern crate iron_tera;
-//! use iron_tera::{TeraEngine, Template, TemplateMode};
+//!
+//! use iron::prelude::*;
+//! use iron::status;
+//! use router::Router;
+//! use tera::Context;
+//!
+//! use iron_tera::{Template, TeraEngine, TemplateMode};
 //!
 //! fn main() {
 //!     let mut router = Router::new();
-//!     router.get("/user", user_handler, "user");
+//!     router.get("/context", context_handler, "context");
+//!     router.get("/json", json_handler, "json");
 //!
 //!     let mut chain = Chain::new(router);
-//!     // TeraEngine will panic here if parsing fails, it's part of the Tera library
 //!     let teng = TeraEngine::new("src/examples/templates/**/*");
 //!     chain.link_after(teng);
 //!
 //!     Iron::new(chain).http("localhost:5000").unwrap();
 //! }
-//! // Rendering a template from a context.
-//! fn user_handler(_: &mut Request) -> IronResult<Response> {
+//!
+//!
+//! fn context_handler(_: &mut Request) -> IronResult<Response> {
 //!     let mut resp = Response::new();
 //!
 //!     let mut context = Context::new();
 //!     context.add("username", &"Bob");
+//!     context.add("my_var", &"Thing"); // comment out to see alternate thing
 //!     context.add("numbers", &vec![1, 2, 3]);
 //!     context.add("bio", &"<script>alert('pwnd');</script>");
 //!
@@ -28,6 +49,28 @@
 //!         .set_mut(status::Ok);
 //!     Ok(resp)
 //! }
+//! fn json_handler(_: &mut Request) -> IronResult<Response> {
+//!     let mut resp = Response::new();
+//!
+//!     let blob = json!({
+//!         "username": "John Doe",
+//!         "my_var": "Thing",
+//!         "numbers": [
+//!             "1",
+//!             "+44 2345678",
+//!             "3"
+//!         ],
+//!         "bio": "<script>alert('pwnd');</script>"
+//!      });
+//!
+//!     resp.set_mut(Template::new("users/profile.html",
+//!                                TemplateMode::from_serial(&blob).unwrap()))
+//!         .set_mut(status::Ok);
+//!     Ok(resp)
+//! }
+//! ```
+//! Creating a template from a struct
+//! ```rust
 //! // The following uses serde's Serialize
 //! #[derive(Serialize)]
 //! struct Product {
@@ -43,21 +86,15 @@
 //!         name: "Foo".into(),
 //!         value: 42,
 //!     };
-//!     resp.set_mut(Template::new("product.html", TemplateMode::from_serial(&product)))
+//!     resp.set_mut(Template::new("product.html", TemplateMode::from_serial(&product).unwrap())) // I made a choice here to return a result and let you handle the serialization error how you see fit.
 //!         .set_mut(status::Ok);
 //!     Ok(resp)
 //! }
 //! ```
-
-#![feature(proc_macro)]
 #![allow(dead_code)]
-
-extern crate serde_json;
-
+#[macro_use] extern crate serde_json;
 #[macro_use] extern crate tera;
-
 extern crate iron;
-
 extern crate serde;
 
 use iron::prelude::*;
@@ -85,8 +122,8 @@ impl TemplateMode {
     pub fn from_context(context: Context) -> TemplateMode {
         TemplateMode::TeraContext(context)
     }
-    pub fn from_serial<S: Serialize>(serialized: S) -> TemplateMode {
-        TemplateMode::Serialized(to_value(serialized))
+    pub fn from_serial<S: Serialize>(serialized: S) -> Result<TemplateMode, serde_json::Error> {
+        Ok(TemplateMode::Serialized(to_value(serialized)?))
     }
 }
 
@@ -114,8 +151,8 @@ pub struct TeraEngine {
 /// `compile_templates!` is used to parse the contents of a dir for all templates.
 impl TeraEngine {
     /// Take a `String` and convert to a slice or preferably a `&str`
-    pub fn new<S: AsRef<str>>(dir: &S) -> TeraEngine {
-        TeraEngine { tera: compile_templates!(dir.as_ref()) }
+    pub fn new(dir: &str) -> TeraEngine {
+        TeraEngine { tera: compile_templates!(dir) }
     }
 }
 
