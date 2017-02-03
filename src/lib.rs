@@ -104,7 +104,7 @@ use iron::headers::ContentType;
 
 use tera::{Tera, Context};
 
-use serde::Serialize;
+use serde::ser::Serialize;
 use serde_json::{Value, to_value};
 
 /// There are 2 main ways to pass data to generate a template.
@@ -204,12 +204,12 @@ mod tests {
     use super::{TeraEngine, Template, TemplateMode};
     use iron::prelude::*;
     use tera::{Tera, Context};
-
-    #[derive(Serialize)]
-    struct Product {
-        name: String,
-        value: i32,
-    }
+    //
+    // #[derive(Serialize)]
+    // struct Product {
+    //     name: String,
+    //     value: i32,
+    // }
 
     fn test_resp() -> IronResult<Response> {
         let resp = Response::new();
@@ -228,8 +228,8 @@ mod tests {
 
         match resp.get::<TeraEngine>() {
             Ok(h) => {
-                assert_eq!(h.name.unwrap(), "users/profile.html".to_string());
-                assert_eq!(h.value
+                assert_eq!(h.name, "users/profile.html".to_string());
+                assert_eq!(h.name
                                .as_object()
                                .unwrap()
                                .get(&"Foo".to_string())
