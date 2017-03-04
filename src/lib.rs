@@ -96,6 +96,7 @@
 #[macro_use] extern crate tera;
 extern crate iron;
 extern crate serde;
+extern crate plugin;
 
 use iron::prelude::*;
 use iron::{AfterMiddleware, typemap, status};
@@ -106,6 +107,8 @@ use tera::{Tera, Context};
 
 use serde::ser::Serialize;
 use serde_json::{Value, to_value};
+
+use plugin::Plugin;
 
 /// There are 2 main ways to pass data to generate a template.
 #[derive(Clone)]
@@ -196,6 +199,17 @@ impl AfterMiddleware for TeraEngine {
     fn catch(&self, req: &mut Request, mut err: IronError) -> IronResult<Response> {
         err.response = self.after(req, err.response)?;
         Err(err)
+    }
+}
+
+impl Plugin<Response> for TeraEngine {
+    type Error = ();
+
+    fn eval(resp: &mut Response) -> Result<Template, ()> {
+        match resp.extensions.get::<TeraEngine>() {
+            Some(t) => Ok(t.clone()),
+            None => Err(()),
+        }
     }
 }
 
