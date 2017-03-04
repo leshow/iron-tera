@@ -175,7 +175,7 @@ impl AfterMiddleware for TeraEngine {
         let wrapper = resp.extensions.remove::<TeraEngine>().and_then(|t| {
             match t.mode {
                 TemplateMode::TeraContext(context) => Some(self.tera.render(&t.name, &context)),
-                TemplateMode::Serialized(value) => Some(self.tera.value_render(&t.name, &value)),
+                TemplateMode::Serialized(value) => Some(self.tera.render(&t.name, &value)),
             }
         });
         match wrapper {
