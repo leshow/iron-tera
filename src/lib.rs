@@ -174,7 +174,7 @@ impl AfterMiddleware for TeraEngine {
     fn after(&self, _: &mut Request, mut resp: Response) -> IronResult<Response> {
         let wrapper = resp.extensions.remove::<TeraEngine>().and_then(|t| {
             match t.mode {
-                TemplateMode::TeraContext(context) => Some(self.tera.render(&t.name, context)),
+                TemplateMode::TeraContext(context) => Some(self.tera.render(&t.name, &context)),
                 TemplateMode::Serialized(value) => Some(self.tera.value_render(&t.name, &value)),
             }
         });
