@@ -226,11 +226,16 @@ mod tests {
     }
 
     #[test]
-    fn test_ok() {
+    fn test_from_context() {
         let mut resp = from_context_response().ok().expect("response expected");
         match resp.get::<TeraEngine>() {
             Ok(h) => {
                 assert_eq!(h.name, "./test_template/users/foo.html".to_string());
+                if let TemplateMode::TeraContext(context) = h.mode {
+                    assert_eq!(context.as_json().unwrap().get("greeting").unwrap().as_str().unwrap(), "hi!");
+                } else {
+                    panic!("TeraContext expected");
+                }
             }
             _ => panic!("template expected"),
         }
