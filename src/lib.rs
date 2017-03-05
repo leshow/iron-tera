@@ -6,24 +6,21 @@
 //!
 //! ## Examples
 //! The following is a complete working example that I've tested with serde 0.9.0, tera 0.7.0 and iron-tera 0.2.0
-//! ```rust
-//! #[macro_use]
-//! extern crate tera;
 //!
+//! ```ignore
+//! extern crate tera;
 //! extern crate iron;
 //! extern crate router;
-//! #[macro_use]
-//! extern crate serde_json;
+//! #[macro_use] extern crate serde_json;
 //! extern crate iron_tera;
-//!
-//! use iron::prelude::*;
-//! use iron::status;
-//! use router::Router;
-//! use tera::Context;
-//!
-//! use iron_tera::{Template, TeraEngine, TemplateMode};
-//!
 //! fn main() {
+//!     use iron::prelude::*;
+//!     use iron::status;
+//!     use router::Router;
+//!     use tera::Context;
+//!
+//!     use iron_tera::{Template, TeraEngine, TemplateMode};
+//!
 //!     let mut router = Router::new();
 //!     router.get("/context", context_handler, "context");
 //!     router.get("/json", json_handler, "json");
@@ -33,44 +30,46 @@
 //!     chain.link_after(teng);
 //!
 //!     Iron::new(chain).http("localhost:5000").unwrap();
-//! }
 //!
 //!
-//! fn context_handler(_: &mut Request) -> IronResult<Response> {
-//!     let mut resp = Response::new();
+//!     fn context_handler(_: &mut Request) -> IronResult<Response> {
+//!         let mut resp = Response::new();
 //!
-//!     let mut context = Context::new();
-//!     context.add("username", &"Bob");
-//!     context.add("my_var", &"Thing"); // comment out to see alternate thing
-//!     context.add("numbers", &vec![1, 2, 3]);
-//!     context.add("bio", &"<script>alert('pwnd');</script>");
+//!         let mut context = Context::new();
+//!         context.add("username", &"Bob");
+//!         context.add("my_var", &"Thing"); // comment out to see alternate thing
+//!         context.add("numbers", &vec![1, 2, 3]);
+//!         context.add("bio", &"<script>alert('pwnd');</script>");
 //!
-//!     resp.set_mut(Template::new("users/profile.html", TemplateMode::from_context(context)))
-//!         .set_mut(status::Ok);
-//!     Ok(resp)
-//! }
-//! fn json_handler(_: &mut Request) -> IronResult<Response> {
-//!     let mut resp = Response::new();
+//!         resp.set_mut(Template::new("users/profile.html", TemplateMode::from_context(context)))
+//!             .set_mut(status::Ok);
+//!         Ok(resp)
+//!     }
+//!     fn json_handler(_: &mut Request) -> IronResult<Response> {
+//!         let mut resp = Response::new();
 //!
-//!     let blob = json!({
-//!         "username": "John Doe",
-//!         "my_var": "Thing",
-//!         "numbers": [
-//!             "1",
-//!             "+44 2345678",
-//!             "3"
-//!         ],
-//!         "bio": "<script>alert('pwnd');</script>"
-//!      });
+//!         let blob = json!({
+//!             "username": "John Doe",
+//!             "my_var": "Thing",
+//!             "numbers": [
+//!                 "1",
+//!                 "+44 2345678",
+//!                 "3"
+//!             ],
+//!             "bio": "<script>alert('pwnd');</script>"
+//!          });
 //!
-//!     resp.set_mut(Template::new("users/profile.html",
-//!                                TemplateMode::from_serial(&blob).unwrap()))
-//!         .set_mut(status::Ok);
-//!     Ok(resp)
+//!         resp.set_mut(Template::new("users/profile.html",
+//!                                    TemplateMode::from_serial(&blob).unwrap()))
+//!             .set_mut(status::Ok);
+//!         Ok(resp)
+//!     }
 //! }
 //! ```
+//!
 //! Creating a template from a struct
-//! ```rust
+//!
+//! ```ignore
 //! // The following uses serde's Serialize
 //! #[derive(Serialize)]
 //! struct Product {
@@ -219,7 +218,7 @@ mod tests {
     use tera::Context;
     use super::*;
 
-    fn test_response() -> IronResult<Response> {
+    fn from_context_response() -> IronResult<Response> {
         let resp = Response::new();
         let mut context = Context::new();
         context.add("greeting", &"hi!");
@@ -228,7 +227,7 @@ mod tests {
 
     #[test]
     fn test_ok() {
-        let mut resp = test_response().ok().expect("response expected");
+        let mut resp = from_context_response().ok().expect("response expected");
         match resp.get::<TeraEngine>() {
             Ok(h) => {
                 assert_eq!(h.name, "./test_template/users/foo.html".to_string());
