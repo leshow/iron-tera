@@ -216,7 +216,7 @@ impl Plugin<Response> for TeraEngine {
 mod tests {
     use iron::prelude::*;
     use tera::Context;
-    use super::*;
+    use super::{Template, TeraEngine, TemplateMode};
 
     fn from_context_response() -> IronResult<Response> {
         let resp = Response::new();
