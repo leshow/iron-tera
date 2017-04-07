@@ -92,20 +92,22 @@
 //! }
 //! ```
 #![allow(dead_code)]
-#[macro_use] extern crate serde_json;
-#[macro_use] extern crate tera;
+#[macro_use]
+extern crate serde_json;
+#[macro_use]
+extern crate tera;
 extern crate iron;
 extern crate serde;
 
-use iron::prelude::*;
-use iron::{AfterMiddleware, typemap, status};
-use iron::modifier::Modifier;
+use iron::{AfterMiddleware, status, typemap};
 use iron::headers::ContentType;
-
-use tera::{Tera, Context};
+use iron::modifier::Modifier;
+use iron::prelude::*;
 
 use serde::ser::Serialize;
 use serde_json::{Value, to_value};
+
+use tera::{Context, Tera};
 
 /// There are 2 main ways to pass data to generate a template.
 #[derive(Clone)]
@@ -172,22 +174,32 @@ impl AfterMiddleware for TeraEngine {
     /// determine what `TemplateMode` we should render in, and pass the appropriate values to
     /// tera's render methods.
     fn after(&self, _: &mut Request, mut resp: Response) -> IronResult<Response> {
-        let wrapper = resp.extensions.remove::<TeraEngine>().and_then(|t| {
-            match t.mode {
-                TemplateMode::TeraContext(context) => Some(self.tera.render(&t.name, context)),
-                TemplateMode::Serialized(value) => Some(self.tera.value_render(&t.name, &value)),
-            }
-        });
+        let wrapper =
+            resp.extensions
+                .remove::<TeraEngine>()
+                .and_then(
+                    |t| match t.mode {
+                        TemplateMode::TeraContext(context) => {
+                            Some(self.tera.render(&t.name, context))
+                        }
+                        TemplateMode::Serialized(value) => {
+                            Some(self.tera.value_render(&t.name, &value))
+                        }
+                    },
+                );
         match wrapper {
             Some(result) => {
-                result.map_err(|e| IronError::new(e, status::InternalServerError))
-                    .and_then(|page| {
-                        if !resp.headers.has::<ContentType>() {
-                            resp.headers.set(ContentType::html());
-                        }
-                        resp.set_mut(page);
-                        Ok(resp)
-                    })
+                result
+                    .map_err(|e| IronError::new(e, status::InternalServerError))
+                    .and_then(
+                        |page| {
+                            if !resp.headers.has::<ContentType>() {
+                                resp.headers.set(ContentType::html());
+                            }
+                            resp.set_mut(page);
+                            Ok(resp)
+                        },
+                    )
             }
             None => Ok(resp),
         }
@@ -201,9 +213,9 @@ impl AfterMiddleware for TeraEngine {
 
 #[cfg(test)]
 mod tests {
-    use super::{TeraEngine, Template, TemplateMode};
+    use super::{Template, TemplateMode, TeraEngine};
     use iron::prelude::*;
-    use tera::{Tera, Context};
+    use tera::{Context, Tera};
     //
     // #[derive(Serialize)]
     // struct Product {
@@ -219,7 +231,7 @@ mod tests {
         context.add("bio", &"Bar");
         context.add("numbers", &vec![1, 2, 3]);
 
-        Ok(resp.set(Template::new("users/foo.html", TemplateMode::from_context(context))))
+        Ok(resp.set(Template::new("users/foo.html", TemplateMode::from_context(context)),),)
     }
 
     #[test]
@@ -229,14 +241,16 @@ mod tests {
         match resp.get::<TeraEngine>() {
             Ok(h) => {
                 assert_eq!(h.name, "users/profile.html".to_string());
-                assert_eq!(h.name
-                               .as_object()
-                               .unwrap()
-                               .get(&"Foo".to_string())
-                               .unwrap()
-                               .as_string()
-                               .unwrap(),
-                           "Bar");
+                assert_eq!(
+                    h.name
+                        .as_object()
+                        .unwrap()
+                        .get(&"Foo".to_string())
+                        .unwrap()
+                        .as_string()
+                        .unwrap(),
+                    "Bar"
+                );
             }
             _ => panic!("template expected"),
         }
