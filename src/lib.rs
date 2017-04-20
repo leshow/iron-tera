@@ -6,24 +6,21 @@
 //!
 //! ## Examples
 //! The following is a complete working example that I've tested with serde 0.9.0, tera 0.7.0 and iron-tera 0.2.0
-//! ```rust
-//! #[macro_use]
-//! extern crate tera;
 //!
+//! ```ignore
+//! extern crate tera;
 //! extern crate iron;
 //! extern crate router;
-//! #[macro_use]
-//! extern crate serde_json;
+//! #[macro_use] extern crate serde_json;
 //! extern crate iron_tera;
-//!
-//! use iron::prelude::*;
-//! use iron::status;
-//! use router::Router;
-//! use tera::Context;
-//!
-//! use iron_tera::{Template, TeraEngine, TemplateMode};
-//!
 //! fn main() {
+//!     use iron::prelude::*;
+//!     use iron::status;
+//!     use router::Router;
+//!     use tera::Context;
+//!
+//!     use iron_tera::{Template, TeraEngine, TemplateMode};
+//!
 //!     let mut router = Router::new();
 //!     router.get("/context", context_handler, "context");
 //!     router.get("/json", json_handler, "json");
@@ -33,44 +30,46 @@
 //!     chain.link_after(teng);
 //!
 //!     Iron::new(chain).http("localhost:5000").unwrap();
-//! }
 //!
 //!
-//! fn context_handler(_: &mut Request) -> IronResult<Response> {
-//!     let mut resp = Response::new();
+//!     fn context_handler(_: &mut Request) -> IronResult<Response> {
+//!         let mut resp = Response::new();
 //!
-//!     let mut context = Context::new();
-//!     context.add("username", &"Bob");
-//!     context.add("my_var", &"Thing"); // comment out to see alternate thing
-//!     context.add("numbers", &vec![1, 2, 3]);
-//!     context.add("bio", &"<script>alert('pwnd');</script>");
+//!         let mut context = Context::new();
+//!         context.add("username", &"Bob");
+//!         context.add("my_var", &"Thing"); // comment out to see alternate thing
+//!         context.add("numbers", &vec![1, 2, 3]);
+//!         context.add("bio", &"<script>alert('pwnd');</script>");
 //!
-//!     resp.set_mut(Template::new("users/profile.html", TemplateMode::from_context(context)))
-//!         .set_mut(status::Ok);
-//!     Ok(resp)
-//! }
-//! fn json_handler(_: &mut Request) -> IronResult<Response> {
-//!     let mut resp = Response::new();
+//!         resp.set_mut(Template::new("users/profile.html", TemplateMode::from_context(context)))
+//!             .set_mut(status::Ok);
+//!         Ok(resp)
+//!     }
+//!     fn json_handler(_: &mut Request) -> IronResult<Response> {
+//!         let mut resp = Response::new();
 //!
-//!     let blob = json!({
-//!         "username": "John Doe",
-//!         "my_var": "Thing",
-//!         "numbers": [
-//!             "1",
-//!             "+44 2345678",
-//!             "3"
-//!         ],
-//!         "bio": "<script>alert('pwnd');</script>"
-//!      });
+//!         let blob = json!({
+//!             "username": "John Doe",
+//!             "my_var": "Thing",
+//!             "numbers": [
+//!                 "1",
+//!                 "+44 2345678",
+//!                 "3"
+//!             ],
+//!             "bio": "<script>alert('pwnd');</script>"
+//!          });
 //!
-//!     resp.set_mut(Template::new("users/profile.html",
-//!                                TemplateMode::from_serial(&blob).unwrap()))
-//!         .set_mut(status::Ok);
-//!     Ok(resp)
+//!         resp.set_mut(Template::new("users/profile.html",
+//!                                    TemplateMode::from_serial(&blob).unwrap()))
+//!             .set_mut(status::Ok);
+//!         Ok(resp)
+//!     }
 //! }
 //! ```
+//!
 //! Creating a template from a struct
-//! ```rust
+//!
+//! ```ignore
 //! // The following uses serde's Serialize
 //! #[derive(Serialize)]
 //! struct Product {
@@ -92,16 +91,20 @@
 //! }
 //! ```
 #![allow(dead_code)]
+#[macro_use]
 extern crate serde_json;
 #[macro_use]
 extern crate tera;
 extern crate iron;
 extern crate serde;
+extern crate plugin;
 
 use iron::{AfterMiddleware, status, typemap};
 use iron::headers::ContentType;
 use iron::modifier::Modifier;
 use iron::prelude::*;
+
+use plugin::Plugin;
 
 use serde::ser::Serialize;
 use serde_json::{Value, to_value};
@@ -173,19 +176,14 @@ impl AfterMiddleware for TeraEngine {
     /// determine what `TemplateMode` we should render in, and pass the appropriate values to
     /// tera's render methods.
     fn after(&self, _: &mut Request, mut resp: Response) -> IronResult<Response> {
-        let wrapper =
-            resp.extensions
-                .remove::<TeraEngine>()
-                .and_then(
-                    |t| match t.mode {
-                        TemplateMode::TeraContext(context) => {
-                            Some(self.tera.render(&t.name, context))
-                        }
-                        TemplateMode::Serialized(value) => {
-                            Some(self.tera.value_render(&t.name, &value))
-                        }
-                    },
-                );
+        let wrapper = resp.extensions
+            .remove::<TeraEngine>()
+            .and_then(
+                |t| match t.mode {
+                    TemplateMode::TeraContext(context) => Some(self.tera.render(&t.name, &context)),
+                    TemplateMode::Serialized(value) => Some(self.tera.render(&t.name, &value)),
+                },
+            );
         match wrapper {
             Some(result) => {
                 result
@@ -210,70 +208,59 @@ impl AfterMiddleware for TeraEngine {
     }
 }
 
+impl Plugin<Response> for TeraEngine {
+    type Error = ();
+
+    fn eval(resp: &mut Response) -> Result<Template, ()> {
+        match resp.extensions.get::<TeraEngine>() {
+            Some(t) => Ok(t.clone()),
+            None => Err(()),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{Template, TemplateMode, TeraEngine};
     use iron::prelude::*;
-    use tera::{Context, Tera};
-    //
-    // #[derive(Serialize)]
-    // struct Product {
-    //     name: String,
-    //     value: i32,
-    // }
+    use tera::Context;
 
-    fn test_resp() -> IronResult<Response> {
+    fn from_context_response() -> IronResult<Response> {
         let resp = Response::new();
-
         let mut context = Context::new();
-        context.add("username", &"Foo");
-        context.add("bio", &"Bar");
-        context.add("numbers", &vec![1, 2, 3]);
-
-        Ok(resp.set(Template::new("users/foo.html", TemplateMode::from_context(context)),),)
+        context.add("greeting", &"hi!");
+        Ok(
+            resp.set(
+                Template::new(
+                    "./test_template/users/foo.html",
+                    TemplateMode::from_context(context),
+                ),
+            ),
+        )
     }
 
     #[test]
-    fn example() {
-        let mut resp = test_resp().ok().expect("response expected");
-
+    fn test_from_context() {
+        let mut resp = from_context_response().ok().expect("response expected");
         match resp.get::<TeraEngine>() {
             Ok(h) => {
-                assert_eq!(h.name, "users/profile.html".to_string());
-                assert_eq!(
-                    h.name
-                        .as_object()
-                        .unwrap()
-                        .get(&"Foo".to_string())
-                        .unwrap()
-                        .as_string()
-                        .unwrap(),
-                    "Bar"
-                );
+                assert_eq!(h.name, "./test_template/users/foo.html".to_string());
+                if let TemplateMode::TeraContext(context) = h.mode {
+                    assert_eq!(
+                        context
+                            .as_json()
+                            .unwrap()
+                            .get("greeting")
+                            .unwrap()
+                            .as_str()
+                            .unwrap(),
+                        "hi!"
+                    );
+                } else {
+                    panic!("TeraContext expected");
+                }
             }
             _ => panic!("template expected"),
         }
-        // let teng = TeraEngine::new("src/test_template/**/*");
-        // // Context option 1
-        // let mut context = Context::new();
-        // context.add("firstname", &"Foo");
-        // context.add("lastname", &"Bar");
-        //
-        // let t = Template::new("index", TemplateMode::TeraContext(context));
-        //
-        // // Context option 2
-        // let mut c2 = Context::new();
-        // c2.add("firstname", &"Foo");
-        // c2.add("lastname", &"Bar");
-        //
-        // let t4 = Template::new("index", TemplateMode::from_context(c2));
-        //
-        // // Using serialized values
-        // let product = Product {
-        //     name: "Foo".into(),
-        //     value: 42,
-        // };
-        // // option 2
-        // let t2 = Template::new("index", TemplateMode::from_serial(&product));
     }
 }
