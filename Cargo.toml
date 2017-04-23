@@ -1,6 +1,6 @@
 [package]
 name = "iron-tera"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Evan Cameron <cameron.evan@gmail.com>"]
 description = "This is an Iron middleware for the Tera templating library"
 repository = "https://github.com/leshow/iron-tera"
@@ -11,10 +11,10 @@ license = "MIT"
 exclude = ["src/test_template"]
 
 [dependencies]
-iron = "^0.5.0"
-router = "^0.5.0"
+iron = "0.5.0"
+router = "0.5.0"
 tera = "0.10"
 serde = "1.0"
 serde_json = "1.0"
 serde_derive = "1.0"
-plugin = "^0.2.0"
+plugin = "0.2.0"

@@ -1,8 +1,10 @@
 //! Please contact me on github and file any issues if you find some, I'm also open to PRs or other suggestions.
-//! CHANGELOG (0.2.0):
-//! If you're upgrading from iron-tera 0.1.4, the API has changed slightly for serialized values.
+//!
+//! Updated to Tera 0.10 / Serde 1.0 / Iron 0.5 !
 //! Serde 0.9.0 to_value returns a `Result`, this means you need to handle the possiblity of a serialization failure.
-//! Since we're still pre-1.0 and the API isn't completely stable, I've only incremented the minor version number.
+//! If you just want to `unwrap()` there is an implementation of From<Value> for TemplateMode so `Template::new(path, value)`
+//! works also.
+//!
 //!
 //! ## Examples
 //! The following is a complete working example that I've tested with serde 0.9.0, tera 0.7.0 and iron-tera 0.2.0
@@ -41,7 +43,8 @@
 //!         context.add("numbers", &vec![1, 2, 3]);
 //!         context.add("bio", &"<script>alert('pwnd');</script>");
 //!
-//!         resp.set_mut(Template::new("users/profile.html", TemplateMode::from_context(context)))
+//!         // can use Template::new(path, TemplateMode::from_context(context)) or TemplateMode::from(context) also
+//!         resp.set_mut(Template::new("users/profile.html", context))
 //!             .set_mut(status::Ok);
 //!         Ok(resp)
 //!     }
@@ -58,9 +61,9 @@
 //!             ],
 //!             "bio": "<script>alert('pwnd');</script>"
 //!          });
-//!
-//!         resp.set_mut(Template::new("users/profile.html",
-//!                                    TemplateMode::from_serial(&blob).unwrap()))
+//!         // you can use Template::new(path, TemplateMode::from_serial(serde_json::Value)) to handle
+//!         // serialization error explicitly
+//!         resp.set_mut(Template::new("users/profile.html", blob))
 //!             .set_mut(status::Ok);
 //!         Ok(resp)
 //!     }
@@ -85,7 +88,8 @@
 //!         name: "Foo".into(),
 //!         value: 42,
 //!     };
-//!     resp.set_mut(Template::new("product.html", TemplateMode::from_serial(&product).unwrap())) // I made a choice here to return a result and let you handle the serialization error how you see fit.
+//!     // You can use TemplateMode::from()
+//!     resp.set_mut(Template::new("product.html", product))
 //!         .set_mut(status::Ok);
 //!     Ok(resp)
 //! }
@@ -126,9 +130,20 @@ impl TemplateMode {
     pub fn from_context(context: Context) -> TemplateMode {
         TemplateMode::TeraContext(context)
     }
-    pub fn from_serial<S: Serialize>(serializeable: Value,)
-        -> Result<TemplateMode, serde_json::Error> {
+    pub fn from_serial<S: Serialize>(serializeable: S) -> Result<TemplateMode, serde_json::Error> {
         Ok(TemplateMode::Serialized(to_value(serializeable)?))
+    }
+}
+
+impl From<Context> for TemplateMode {
+    fn from(context: Context) -> Self {
+        TemplateMode::from_context(context)
+    }
+}
+
+impl From<Value> for TemplateMode {
+    fn from(serializeable: Value) -> Self {
+        TemplateMode::from_serial(serializeable).unwrap()
     }
 }
 
@@ -140,10 +155,10 @@ pub struct Template {
 }
 
 impl Template {
-    pub fn new(name: &str, mode: TemplateMode) -> Template {
+    pub fn new<T: Into<TemplateMode>>(name: &str, mode: T) -> Template {
         Template {
             name: name.into(),
-            mode: mode,
+            mode: mode.into(),
         }
     }
 }
@@ -181,8 +196,10 @@ impl AfterMiddleware for TeraEngine {
             .remove::<TeraEngine>()
             .and_then(
                 |t| match t.mode {
-                    TemplateMode::TeraContext(context) => Some(self.tera.render(&t.name, &context)),
-                    TemplateMode::Serialized(value) => Some(self.tera.render(&t.name, &value)),
+                    TemplateMode::TeraContext(ref context) => {
+                        Some(self.tera.render(&t.name, context))
+                    }
+                    TemplateMode::Serialized(ref value) => Some(self.tera.render(&t.name, value)),
                 },
             );
         match wrapper {
@@ -230,14 +247,7 @@ mod tests {
         let resp = Response::new();
         let mut context = Context::new();
         context.add("greeting", &"hi!");
-        Ok(
-            resp.set(
-                Template::new(
-                    "./test_template/users/foo.html",
-                    TemplateMode::from_context(context),
-                ),
-            ),
-        )
+        Ok(resp.set(Template::new("./test_template/users/foo.html", context.into()),),)
     }
 
     #[test]
