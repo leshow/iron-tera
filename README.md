@@ -11,7 +11,7 @@ After the initial template engine is created, you can render templates in a give
 ```rust
 extern crate iron_tera;
 
-use iron_tera::{TeraEngine, Template, TemplateMode};
+use iron_tera::{TeraEngine, Template}; // TemplateMode if you want to handle explicit serialization errors
 
 fn main() {
     let mut router = Router::new();
@@ -33,7 +33,7 @@ fn user_handler(_: &mut Request) -> IronResult<Response> {
     context.add("numbers", &vec![1, 2, 3]);
     context.add("bio", &"<script>alert('pwnd');</script>");
 
-    resp.set_mut(Template::new("users/profile.html", TemplateMode::from_context(context)))
+    resp.set_mut(Template::new("users/profile.html", context))
         .set_mut(status::Ok);
     Ok(resp)
 }
@@ -52,7 +52,9 @@ fn produce_handler(_: &mut Request) -> IronResult<Response> {
         name: "Foo".into(),
         value: 42,
     };
-    resp.set_mut(Template::new("product.html", TemplateMode::from_serial(&product)))
+    // use TemplateMode::from_serial(product) to explicitly handle serialization error
+    // Template::new("product", TemplateMode::from_serial(product).unwrap())
+    resp.set_mut(Template::new("product.html", product))
         .set_mut(status::Ok);
     Ok(resp)
 }
