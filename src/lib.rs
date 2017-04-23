@@ -21,7 +21,7 @@
 //!     use router::Router;
 //!     use tera::Context;
 //!
-//!     use iron_tera::{Template, TeraEngine, TemplateMode};
+//!     use iron_tera::{Template, TeraEngine}; // import TemplateMode to explicitly handle serialization errors
 //!
 //!     let mut router = Router::new();
 //!     router.get("/context", context_handler, "context");
