@@ -126,8 +126,9 @@ impl TemplateMode {
     pub fn from_context(context: Context) -> TemplateMode {
         TemplateMode::TeraContext(context)
     }
-    pub fn from_serial<S: Serialize>(serialized: S) -> Result<TemplateMode, serde_json::Error> {
-        Ok(TemplateMode::Serialized(to_value(serialized)?))
+    pub fn from_serial<S: Serialize>(serializeable: Value,)
+        -> Result<TemplateMode, serde_json::Error> {
+        Ok(TemplateMode::Serialized(to_value(serializeable)?))
     }
 }
 
