@@ -4,6 +4,8 @@
 //! Serde 0.9.0 to_value returns a `Result`, this means you need to handle the possiblity of a serialization failure.
 //! If you just want to `unwrap()` there is an implementation of From<Value> for TemplateMode so `Template::new(path, value)`
 //! works also.
+//! **update**: If you build this crate with feature = "nightly" on the nightly compiler, I've included a TryFrom impl
+//! so that you can use try without having to unwrap.
 //!
 //!
 //! ## Examples
@@ -94,6 +96,8 @@
 //!     Ok(resp)
 //! }
 //! ```
+#![cfg_attr(feature = "unstable", feature(try_from, try_trait))]
+
 #![allow(dead_code)]
 #[macro_use]
 extern crate serde_json;
@@ -112,6 +116,12 @@ use plugin::Plugin;
 
 use serde::ser::Serialize;
 use serde_json::{Value, to_value};
+use std::convert::From;
+
+#[cfg(feature = "unstable")]
+use std::convert::TryFrom;
+#[cfg(feature = "unstable")]
+use std::ops::Try;
 
 use tera::{Context, Tera};
 
@@ -130,6 +140,7 @@ impl TemplateMode {
     pub fn from_context(context: Context) -> TemplateMode {
         TemplateMode::TeraContext(context)
     }
+
     pub fn from_serial<S: Serialize>(serializeable: S) -> Result<TemplateMode, serde_json::Error> {
         Ok(TemplateMode::Serialized(to_value(serializeable)?))
     }
@@ -141,12 +152,37 @@ impl From<Context> for TemplateMode {
     }
 }
 
+#[cfg(feature = "stable")]
 impl From<Value> for TemplateMode {
     fn from(serializeable: Value) -> Self {
         TemplateMode::from_serial(serializeable).unwrap()
     }
 }
 
+#[cfg(feature = "unstable")]
+impl TryFrom<Value> for TemplateMode {
+    type Error = serde_json::Error;
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        TemplateMode::from_serial(value)
+    }
+}
+
+#[cfg(feature = "unstable")]
+struct TValue(Value);
+#[cfg(feature = "unstable")]
+impl Try for TValue {
+    type Ok = TemplateMode;
+    type Error = serde_json::Error;
+    fn into_result(self) -> Result<Self::Ok, Self::Error> {
+        TemplateMode::try_from(self.0)
+    }
+    fn from_error(v: Self::Error) -> Self {
+        TValue(serde_json::error::Error { err: Box::new(v) })
+    }
+    fn from_ok(v: Self::Ok) -> Self {
+        TValue(TemplateMode::Serialized(v))
+    }
+}
 /// Our template holds a name (path to template) and a mode (constructed with `from_context` or `from_serial`)
 #[derive(Clone)]
 pub struct Template {
@@ -155,7 +191,7 @@ pub struct Template {
 }
 
 impl Template {
-    pub fn new<T: Into<TemplateMode>>(name: &str, mode: T) -> Template {
+    pub fn new<T: Into<TemplateMode>, S: Into<String>>(name: S, mode: T) -> Template {
         Template {
             name: name.into(),
             mode: mode.into(),
@@ -192,29 +228,23 @@ impl AfterMiddleware for TeraEngine {
     /// determine what `TemplateMode` we should render in, and pass the appropriate values to
     /// tera's render methods.
     fn after(&self, _: &mut Request, mut resp: Response) -> IronResult<Response> {
-        let wrapper = resp.extensions
-            .remove::<TeraEngine>()
-            .and_then(
-                |t| match t.mode {
-                    TemplateMode::TeraContext(ref context) => {
-                        Some(self.tera.render(&t.name, context))
-                    }
-                    TemplateMode::Serialized(ref value) => Some(self.tera.render(&t.name, value)),
-                },
-            );
+        let wrapper = resp.extensions.remove::<TeraEngine>().and_then(
+            |t| match t.mode {
+                TemplateMode::TeraContext(ref context) => Some(self.tera.render(&t.name, context)),
+                TemplateMode::Serialized(ref value) => Some(self.tera.render(&t.name, value)),
+            },
+        );
         match wrapper {
             Some(result) => {
                 result
                     .map_err(|e| IronError::new(e, status::InternalServerError))
-                    .and_then(
-                        |page| {
-                            if !resp.headers.has::<ContentType>() {
-                                resp.headers.set(ContentType::html());
-                            }
-                            resp.set_mut(page);
-                            Ok(resp)
-                        },
-                    )
+                    .and_then(|page| {
+                        if !resp.headers.has::<ContentType>() {
+                            resp.headers.set(ContentType::html());
+                        }
+                        resp.set_mut(page);
+                        Ok(resp)
+                    })
             }
             None => Ok(resp),
         }
@@ -247,7 +277,9 @@ mod tests {
         let resp = Response::new();
         let mut context = Context::new();
         context.add("greeting", &"hi!");
-        Ok(resp.set(Template::new("./test_template/users/foo.html", context.into()),),)
+        Ok(resp.set(
+            Template::new("./test_template/users/foo.html", context),
+        ))
     }
 
     #[test]
