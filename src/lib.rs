@@ -4,8 +4,11 @@
 //! Serde 0.9.0 to_value returns a `Result`, this means you need to handle the possiblity of a serialization failure.
 //! If you just want to `unwrap()` there is an implementation of From<Value> for TemplateMode so `Template::new(path, value)`
 //! works also.
-//! **update**: If you build this crate with feature = "nightly" on the nightly compiler, I've included a TryFrom impl
-//! so that you can use try without having to unwrap.
+//!
+//! **update iron-tera-0.4.0**: If you build this crate with feature = "unstable" on the nightly compiler,
+//! I've included a TryFrom impl so that you can use try without having to unwrap. Instead of
+//! `TemplateMode::from_serial` for `serde_json::Value`s use `TemplateMode::try_serialize`.
+//! `try_serialize` returns a `Result`, allowing you to explicitly handle or propagate up.
 //!
 //!
 //! ## Examples
@@ -96,7 +99,7 @@
 //!     Ok(resp)
 //! }
 //! ```
-#![cfg_attr(feature = "unstable", feature(try_from, try_trait))]
+#![cfg_attr(feature = "unstable", feature(try_from))]
 
 #![allow(dead_code)]
 #[macro_use]
@@ -120,8 +123,6 @@ use std::convert::From;
 
 #[cfg(feature = "unstable")]
 use std::convert::TryFrom;
-#[cfg(feature = "unstable")]
-use std::ops::Try;
 
 use tera::{Context, Tera};
 
@@ -141,6 +142,14 @@ impl TemplateMode {
         TemplateMode::TeraContext(context)
     }
 
+    #[cfg(feature = "unstable")]
+    pub fn try_serialize<S: Serialize>(
+        serializeable: S,
+    ) -> Result<TemplateMode, serde_json::Error> {
+        Ok(TemplateMode::try_from(serializeable)?)
+    }
+
+    #[cfg(not(feature = "unstable"))]
     pub fn from_serial<S: Serialize>(serializeable: S) -> Result<TemplateMode, serde_json::Error> {
         Ok(TemplateMode::Serialized(to_value(serializeable)?))
     }
@@ -152,7 +161,7 @@ impl From<Context> for TemplateMode {
     }
 }
 
-#[cfg(feature = "stable")]
+#[cfg(not(feature = "unstable"))]
 impl From<Value> for TemplateMode {
     fn from(serializeable: Value) -> Self {
         TemplateMode::from_serial(serializeable).unwrap()
@@ -160,29 +169,21 @@ impl From<Value> for TemplateMode {
 }
 
 #[cfg(feature = "unstable")]
-impl TryFrom<Value> for TemplateMode {
+impl<S> TryFrom<S> for TemplateMode
+where
+    S: Serialize,
+{
     type Error = serde_json::Error;
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
-        TemplateMode::from_serial(value)
+    fn try_from(value: S) -> Result<Self, Self::Error> {
+        from_serde(value)
     }
 }
 
 #[cfg(feature = "unstable")]
-struct TValue(Value);
-#[cfg(feature = "unstable")]
-impl Try for TValue {
-    type Ok = TemplateMode;
-    type Error = serde_json::Error;
-    fn into_result(self) -> Result<Self::Ok, Self::Error> {
-        TemplateMode::try_from(self.0)
-    }
-    fn from_error(v: Self::Error) -> Self {
-        TValue(serde_json::error::Error { err: Box::new(v) })
-    }
-    fn from_ok(v: Self::Ok) -> Self {
-        TValue(TemplateMode::Serialized(v))
-    }
+fn from_serde<S: Serialize>(serializeable: S) -> Result<TemplateMode, serde_json::Error> {
+    Ok(TemplateMode::Serialized(to_value(serializeable)?))
 }
+
 /// Our template holds a name (path to template) and a mode (constructed with `from_context` or `from_serial`)
 #[derive(Clone)]
 pub struct Template {
@@ -206,9 +207,9 @@ pub struct TeraEngine {
 
 /// `compile_templates!` is used to parse the contents of a dir for all templates.
 impl TeraEngine {
-    /// Take a `String` and convert to a slice or preferably a `&str`
-    pub fn new(dir: &str) -> TeraEngine {
-        TeraEngine { tera: compile_templates!(dir) }
+    /// Take a `String` and convert to a slice
+    pub fn new<S: AsRef<str>>(dir: S) -> TeraEngine {
+        TeraEngine { tera: compile_templates!(dir.as_ref()) }
     }
 }
 
