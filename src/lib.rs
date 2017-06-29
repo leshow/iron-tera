@@ -6,27 +6,35 @@
 //! works also.
 //!
 //! **update iron-tera-0.4.0**: If you build this crate with feature = "unstable" on the nightly compiler,
-//! I've included a TryFrom impl so that you can use try without having to unwrap. Instead of
-//! `TemplateMode::from_serial` for `serde_json::Value`s use `TemplateMode::try_serialize`.
-//! `try_serialize` returns a `Result`, allowing you to explicitly handle or propagate up.
-//!
+//! I've included a `TryFrom` impl to improve API ergonomics. Instead of
+//! `TemplateMode::from_serial` use `value.try_into()`. This uses the `TryFrom` feature to return a fallible `Result`.
 //!
 //! ## Examples
 //! The following is a complete working example that I've tested with serde 0.9.0, tera 0.7.0 and iron-tera 0.2.0
 //!
 //! ```ignore
+//!   [dependencies]
+//!   iron-tera = { version = "0.4.0" }  # optional:  features = [ "unstable" ]
+//! ```
+//!
+//! Using `iron-tera` stable.
+//! ```rust
+
 //! extern crate tera;
 //! extern crate iron;
 //! extern crate router;
 //! #[macro_use] extern crate serde_json;
+//! #[macro_use] extern crate serde_derive;
 //! extern crate iron_tera;
-//! fn main() {
-//!     use iron::prelude::*;
-//!     use iron::status;
-//!     use router::Router;
-//!     use tera::Context;
 //!
-//!     use iron_tera::{Template, TeraEngine}; // import TemplateMode to explicitly handle serialization errors
+//! # fn main() {
+//! use iron::prelude::*;
+//! use iron::status;
+//! use router::Router;
+//! use tera::Context;
+//!
+//! use iron_tera::{Template, TeraEngine}; // import TemplateMode to explicitly handle serialization errors
+//! fn main() {
 //!
 //!     let mut router = Router::new();
 //!     router.get("/context", context_handler, "context");
@@ -66,13 +74,14 @@
 //!             ],
 //!             "bio": "<script>alert('pwnd');</script>"
 //!          });
-//!         // you can use Template::new(path, TemplateMode::from_serial(serde_json::Value)) to handle
-//!         // serialization error explicitly
+//!         // you can use blob.try_into() and handle the `Result` explicitly (not shown here)
+//!         // on the `unstable` feature of `iron-tera`
 //!         resp.set_mut(Template::new("users/profile.html", blob))
 //!             .set_mut(status::Ok);
 //!         Ok(resp)
 //!     }
 //! }
+//! # }
 //! ```
 //!
 //! Creating a template from a struct
@@ -119,10 +128,10 @@ use plugin::Plugin;
 
 use serde::ser::Serialize;
 use serde_json::{Value, to_value};
-use std::convert::From;
 
 #[cfg(feature = "unstable")]
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
+use std::convert::From;
 
 use tera::{Context, Tera};
 
@@ -146,7 +155,7 @@ impl TemplateMode {
     pub fn try_serialize<S: Serialize>(
         serializeable: S,
     ) -> Result<TemplateMode, serde_json::Error> {
-        Ok(TemplateMode::try_from(serializeable)?)
+        Ok(serializeable.try_into()?)
     }
 
     #[cfg(not(feature = "unstable"))]
@@ -192,10 +201,18 @@ pub struct Template {
 }
 
 impl Template {
+    #[cfg(not(feature = "unstable"))]
     pub fn new<T: Into<TemplateMode>, S: Into<String>>(name: S, mode: T) -> Template {
         Template {
             name: name.into(),
             mode: mode.into(),
+        }
+    }
+    #[cfg(feature = "unstable")]
+    pub fn new<S: Into<String>>(name: S, mode: TemplateMode) -> Template {
+        Template {
+            name: name.into(),
+            mode,
         }
     }
 }
