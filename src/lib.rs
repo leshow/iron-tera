@@ -19,7 +19,6 @@
 //!
 //! Using `iron-tera` stable.
 //! ```rust
-
 //! extern crate tera;
 //! extern crate iron;
 //! extern crate router;

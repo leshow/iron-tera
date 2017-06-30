@@ -1,14 +1,34 @@
-iron-tera
--------
+#![feature(try_from)]
 
+extern crate tera;
 
-This is a [Tera](https://github.com/Keats/tera/) middleware for [Iron](https://github.com/iron/iron/).
+#[macro_use]
+extern crate serde_derive;
 
-Check me out on [crates.io](https://crates.io/crates/iron-tera) or read the [documentation](https://docs.rs/iron-tera/).
+extern crate iron;
+extern crate router;
+extern crate serde_json;
+extern crate serde;
+extern crate iron_tera;
 
-After the initial template engine is created, you can render templates in a given handler using either a Tera `Context`, or a value that implementes serde's `Serialize`.
+use iron::prelude::*;
+use iron::status;
+use router::Router;
 
-```rust
+use tera::Context;
+use std::convert::TryInto;
+use iron_tera::{Template, TeraEngine, TemplateMode};
+use std::error::Error;
+use std::fmt::{self, Display, Debug};
+
+#[derive(Serialize)]
+struct User<'a> {
+    username: &'a str,
+    my_var: &'a str,
+    numbers: &'a [u32],
+    bio: &'a str,
+}
+
 fn main() {
     let mut router = Router::new();
     router.get("/user", user_handler, "user");
@@ -21,12 +41,13 @@ fn main() {
     Iron::new(chain).http("localhost:5000").unwrap();
 }
 
+
 fn user_handler(_: &mut Request) -> IronResult<Response> {
     let mut resp = Response::new();
 
     let mut context = Context::new();
     context.add("username", &"Bob");
-    context.add("my_var", &"Thing"); 
+    context.add("my_var", &"Thing"); // comment out to see alternate thing
     context.add("numbers", &vec![1, 2, 3]);
     context.add("bio", &"<script>alert('pwnd');</script>");
 
@@ -36,6 +57,7 @@ fn user_handler(_: &mut Request) -> IronResult<Response> {
     )).set_mut(status::Ok);
     Ok(resp)
 }
+
 
 // this uses the unstable feature on nightly
 fn produce_handler(_: &mut Request) -> IronResult<Response> {
@@ -47,7 +69,6 @@ fn produce_handler(_: &mut Request) -> IronResult<Response> {
         numbers: &vec![1, 2, 3],
         bio: "<script>alert('pwnd');</script>",
     };
-
     match user.try_into() {
         Ok(u) => {
             resp.set_mut(Template::new("users/profile.html", u))
@@ -60,4 +81,18 @@ fn produce_handler(_: &mut Request) -> IronResult<Response> {
         )),
     }
 }
-```
+
+#[derive(Debug)]
+struct StringError(String);
+
+impl Display for StringError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
+
+impl Error for StringError {
+    fn description(&self) -> &str {
+        &*self.0
+    }
+}

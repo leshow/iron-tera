@@ -1,0 +1,13 @@
+[package]
+name = "tera-test"
+version = "0.1.0"
+authors = ["Evan Cameron <cameron.evan@gmail.com>"]
+
+[dependencies]
+iron = "0.5.0"
+router = "0.5.0"
+tera = "0.10.0"
+serde = "1.0"
+serde_json = "1.0"
+serde_derive = "1.0"
+iron-tera = { path = "../../", version = "0.4.0", features = [ "unstable"] }
