@@ -18,7 +18,7 @@
 //! ```
 //!
 //! Using `iron-tera` stable.
-//! ```rust
+//! ```ignore
 //! extern crate tera;
 //! extern crate iron;
 //! extern crate router;
@@ -26,7 +26,6 @@
 //! #[macro_use] extern crate serde_derive;
 //! extern crate iron_tera;
 //!
-//! # fn main() {
 //! use iron::prelude::*;
 //! use iron::status;
 //! use router::Router;
@@ -80,7 +79,6 @@
 //!         Ok(resp)
 //!     }
 //! }
-//! # }
 //! ```
 //!
 //! Creating a template from a struct
