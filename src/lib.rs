@@ -18,6 +18,7 @@
 //! ```
 //!
 //! Using `iron-tera` stable.
+//!
 //! ```ignore
 //! extern crate tera;
 //! extern crate iron;
