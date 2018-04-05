@@ -5,7 +5,7 @@
 //! If you just want to `unwrap()` there is an implementation of From<Value> for TemplateMode so `Template::new(path, value)`
 //! works also.
 //!
-//! **update iron-tera-0.4.0**: If you build this crate with feature = "unstable" on the nightly compiler,
+//! **update iron-tera-0.4.0 - 0.5.0**: If you build this crate with feature = "unstable" on the nightly compiler,
 //! I've included a `TryFrom` impl to improve API ergonomics. Instead of
 //! `TemplateMode::from_serial` use `value.try_into()`. This uses the `TryFrom` feature to return a fallible `Result`.
 //!
@@ -20,20 +20,20 @@
 //! Using `iron-tera` stable.
 //!
 //! ```ignore
-//! extern crate tera;
-//! extern crate iron;
-//! extern crate router;
-//! #[macro_use] extern crate serde_json;
-//! #[macro_use] extern crate serde_derive;
-//! extern crate iron_tera;
+//!     extern crate tera;
+//!     extern crate iron;
+//!     extern crate router;
+//!     #[macro_use] extern crate serde_json;
+//!     #[macro_use] extern crate serde_derive;
+//!     extern crate iron_tera;
 //!
-//! use iron::prelude::*;
-//! use iron::status;
-//! use router::Router;
-//! use tera::Context;
-//!
-//! use iron_tera::{Template, TeraEngine}; // import TemplateMode to explicitly handle serialization errors
 //! fn main() {
+//!     use iron::prelude::*;
+//!     use iron::status;
+//!     use router::Router;
+//!     use tera::Context;
+//!
+//!     use iron_tera::{Template, TeraEngine};
 //!
 //!     let mut router = Router::new();
 //!     router.get("/context", context_handler, "context");
@@ -107,34 +107,32 @@
 //! }
 //! ```
 #![cfg_attr(feature = "unstable", feature(try_from))]
-
 #![allow(dead_code)]
 #[macro_use]
 extern crate serde_json;
 #[macro_use]
 extern crate tera;
 extern crate iron;
-extern crate serde;
 extern crate plugin;
+extern crate serde;
 
-use iron::{AfterMiddleware, status, typemap};
 use iron::headers::ContentType;
 use iron::modifier::Modifier;
 use iron::prelude::*;
+use iron::{status, typemap, AfterMiddleware};
 
 use plugin::Plugin;
 
 use serde::ser::Serialize;
-use serde_json::{Value, to_value};
+use serde_json::{to_value, Value};
 
-#[cfg(feature = "unstable")]
 use std::convert::{TryFrom, TryInto};
-use std::convert::From;
+use std::error::Error;
 
 use tera::{Context, Tera};
 
 /// There are 2 main ways to pass data to generate a template.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum TemplateMode {
     /// TeraContext constructor takes a `Context`
     TeraContext(Context),
@@ -149,69 +147,95 @@ impl TemplateMode {
         TemplateMode::TeraContext(context)
     }
 
-    #[cfg(feature = "unstable")]
-    pub fn try_serialize<S: Serialize>(
-        serializeable: S,
-    ) -> Result<TemplateMode, serde_json::Error> {
-        Ok(serializeable.try_into()?)
-    }
-
-    #[cfg(not(feature = "unstable"))]
     pub fn from_serial<S: Serialize>(serializeable: S) -> Result<TemplateMode, serde_json::Error> {
         Ok(TemplateMode::Serialized(to_value(serializeable)?))
     }
 }
+// #[cfg(not(feature = "unstable"))]
+// impl From<Context> for TemplateMode {
+//     fn from(context: Context) -> Self {
+//         TemplateMode::from_context(context)
+//     }
+// }
 
-impl From<Context> for TemplateMode {
-    fn from(context: Context) -> Self {
-        TemplateMode::from_context(context)
+// #[cfg(not(feature = "unstable"))]
+// impl From<Value> for TemplateMode {
+//     fn from(serializeable: Value) -> Self {
+//         TemplateMode::from_serial(serializeable).unwrap()
+//     }
+// }
+#[derive(Debug)]
+pub enum TemplateError {
+    SerdeErr(serde_json::Error),
+    ContextErr(),
+}
+
+impl From<serde_json::Error> for TemplateError {
+    fn from(e: serde_json::Error) -> TemplateError {
+        TemplateError::SerdeErr(e)
+    }
+}
+impl ::std::fmt::Display for TemplateError {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        match *self {
+            TemplateError::SerdeErr(ref e) => write!(f, "Serde Error: {}", e),
+            TemplateError::ContextErr() => write!(f, "Context Error"),
+        }
     }
 }
 
-#[cfg(not(feature = "unstable"))]
-impl From<Value> for TemplateMode {
-    fn from(serializeable: Value) -> Self {
-        TemplateMode::from_serial(serializeable).unwrap()
+impl Error for TemplateError {
+    fn description(&self) -> &str {
+        match *self {
+            TemplateError::SerdeErr(ref e) => e.description(),
+            TemplateError::ContextErr() => "Context Error",
+        }
+    }
+    fn cause(&self) -> Option<&Error> {
+        None
     }
 }
 
-#[cfg(feature = "unstable")]
-impl<S> TryFrom<S> for TemplateMode
-where
-    S: Serialize,
-{
-    type Error = serde_json::Error;
-    fn try_from(value: S) -> Result<Self, Self::Error> {
-        from_serde(value)
+impl TryFrom<Value> for TemplateMode {
+    type Error = TemplateError;
+    fn try_from(serialize: Value) -> Result<Self, Self::Error> {
+        TemplateMode::from_serial(serialize)
     }
 }
 
-#[cfg(feature = "unstable")]
-fn from_serde<S: Serialize>(serializeable: S) -> Result<TemplateMode, serde_json::Error> {
-    Ok(TemplateMode::Serialized(to_value(serializeable)?))
+impl TryFrom<Context> for TemplateMode {
+    type Error = TemplateError;
+    fn try_from(serialize: Context) -> Result<Self, Self::Error> {
+        Ok(TemplateMode::from_context(serialize))
+    }
 }
 
 /// Our template holds a name (path to template) and a mode (constructed with `from_context` or `from_serial`)
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Template {
     mode: TemplateMode,
     name: String,
 }
 
 impl Template {
-    #[cfg(not(feature = "unstable"))]
-    pub fn new<T: Into<TemplateMode>, S: Into<String>>(name: S, mode: T) -> Template {
-        Template {
-            name: name.into(),
-            mode: mode.into(),
-        }
-    }
-    #[cfg(feature = "unstable")]
-    pub fn new<S: Into<String>>(name: S, mode: TemplateMode) -> Template {
-        Template {
+    // #[cfg(not(feature = "unstable"))]
+    // pub fn new<T: Into<TemplateMode>, S: Into<String>>(name: S, mode: T) -> Template {
+    //     Template {
+    //         name: name.into(),
+    //         mode: mode.into(),
+    //     }
+    // }
+    pub fn new<T, S>(name: S, mode: T) -> Result<Template, serde_json::Error>
+    where
+        serde_json::Error: From<<T as TryInto<TemplateMode>>::Error>,
+        S: Into<String>,
+        T: TryInto<TemplateMode>,
+    {
+        let mode = mode.try_into()?;
+        Ok(Template {
             name: name.into(),
             mode,
-        }
+        })
     }
 }
 
@@ -224,7 +248,9 @@ pub struct TeraEngine {
 impl TeraEngine {
     /// Take a `String` and convert to a slice
     pub fn new<S: AsRef<str>>(dir: S) -> TeraEngine {
-        TeraEngine { tera: compile_templates!(dir.as_ref()) }
+        TeraEngine {
+            tera: compile_templates!(dir.as_ref()),
+        }
     }
 }
 
@@ -244,24 +270,22 @@ impl AfterMiddleware for TeraEngine {
     /// determine what `TemplateMode` we should render in, and pass the appropriate values to
     /// tera's render methods.
     fn after(&self, _: &mut Request, mut resp: Response) -> IronResult<Response> {
-        let wrapper = resp.extensions.remove::<TeraEngine>().and_then(
-            |t| match t.mode {
+        let wrapper = resp.extensions
+            .remove::<TeraEngine>()
+            .and_then(|t| match t.mode {
                 TemplateMode::TeraContext(ref context) => Some(self.tera.render(&t.name, context)),
                 TemplateMode::Serialized(ref value) => Some(self.tera.render(&t.name, value)),
-            },
-        );
+            });
         match wrapper {
-            Some(result) => {
-                result
-                    .map_err(|e| IronError::new(e, status::InternalServerError))
-                    .and_then(|page| {
-                        if !resp.headers.has::<ContentType>() {
-                            resp.headers.set(ContentType::html());
-                        }
-                        resp.set_mut(page);
-                        Ok(resp)
-                    })
-            }
+            Some(result) => result
+                .map_err(|e| IronError::new(e, status::InternalServerError))
+                .and_then(|page| {
+                    if !resp.headers.has::<ContentType>() {
+                        resp.headers.set(ContentType::html());
+                    }
+                    resp.set_mut(page);
+                    Ok(resp)
+                }),
             None => Ok(resp),
         }
     }
@@ -293,9 +317,7 @@ mod tests {
         let resp = Response::new();
         let mut context = Context::new();
         context.add("greeting", &"hi!");
-        Ok(resp.set(
-            Template::new("./test_template/users/foo.html", context),
-        ))
+        Ok(resp.set(Template::new("./test_template/users/foo.html", context)))
     }
 
     #[test]
