@@ -199,7 +199,7 @@ impl Error for TemplateError {
 impl TryFrom<Value> for TemplateMode {
     type Error = TemplateError;
     fn try_from(serialize: Value) -> Result<Self, Self::Error> {
-        TemplateMode::from_serial(serialize)
+        Ok(TemplateMode::from_serial(serialize)?)
     }
 }
 

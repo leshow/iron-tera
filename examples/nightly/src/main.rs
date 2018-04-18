@@ -6,20 +6,20 @@ extern crate tera;
 extern crate serde_derive;
 
 extern crate iron;
-extern crate router;
-extern crate serde_json;
-extern crate serde;
 extern crate iron_tera;
+extern crate router;
+extern crate serde;
+extern crate serde_json;
 
 use iron::prelude::*;
 use iron::status;
 use router::Router;
 
-use tera::Context;
+use iron_tera::{Template, TemplateMode, TeraEngine};
 use std::convert::TryInto;
-use iron_tera::{Template, TeraEngine, TemplateMode};
 use std::error::Error;
-use std::fmt::{self, Display, Debug};
+use std::fmt::{self, Debug, Display};
+use tera::Context;
 
 #[derive(Serialize)]
 struct User<'a> {
@@ -41,7 +41,6 @@ fn main() {
     Iron::new(chain).http("localhost:5000").unwrap();
 }
 
-
 fn user_handler(_: &mut Request) -> IronResult<Response> {
     let mut resp = Response::new();
 
@@ -51,13 +50,10 @@ fn user_handler(_: &mut Request) -> IronResult<Response> {
     context.add("numbers", &vec![1, 2, 3]);
     context.add("bio", &"<script>alert('pwnd');</script>");
 
-    resp.set_mut(Template::new(
-        "users/profile.html",
-        TemplateMode::from_context(context),
-    )).set_mut(status::Ok);
+    resp.set_mut(Template::new("users/profile.html", context))
+        .set_mut(status::Ok);
     Ok(resp)
 }
-
 
 // this uses the unstable feature on nightly
 fn produce_handler(_: &mut Request) -> IronResult<Response> {
