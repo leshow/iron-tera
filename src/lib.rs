@@ -1,20 +1,21 @@
 //! Please contact me on github and file any issues if you find some, I'm also open to PRs or other suggestions.
 //!
-//! Updated to Tera 0.10 / Serde 1.0 / Iron 0.5 !
-//! Serde 0.9.0 to_value returns a `Result`, this means you need to handle the possiblity of a serialization failure.
+//! Updated to Tera 0.11 / Serde 1.0 / Iron 0.5 !
+//! Serde 1.0 to_value returns a `Result`, this means you need to handle the possiblity of a serialization failure.
 //! If you just want to `unwrap()` there is an implementation of From<Value> for TemplateMode so `Template::new(path, value)`
-//! works also.
+//! works also. This is the implementation that's on 'stable'.
 //!
-//! **update iron-tera-0.4.0 - 0.5.0**: If you build this crate with feature = "unstable" on the nightly compiler,
-//! I've included a `TryFrom` impl to improve API ergonomics. Instead of
-//! `TemplateMode::from_serial` use `value.try_into()`. This uses the `TryFrom` feature to return a fallible `Result`.
+//! You can try the unstable crate feature which uses `TryFrom`/`TryInto` to make `Template::new` polymorphic over `Context` and `Value`.
+//!
+//! **update iron-tera-0.5.0**: If you build this crate with feature = "unstable" on the nightly compiler,
+//! I've included a `TryFrom` impl to improve API ergonomics.
 //!
 //! ## Examples
-//! The following is a complete working example that I've tested with serde 0.9.0, tera 0.7.0 and iron-tera 0.2.0
+//! Full examples ON GITHUB for both stable and unstable.
 //!
 //! ```ignore
 //!   [dependencies]
-//!   iron-tera = { version = "0.4.0" }  # optional:  features = [ "unstable" ]
+//!   iron-tera = { version = "0.5.0" }  # optional:  features = [ "unstable" ]
 //! ```
 //!
 //! Using `iron-tera` stable.
