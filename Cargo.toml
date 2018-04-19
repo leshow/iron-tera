@@ -8,7 +8,7 @@ homepage = "https://github.com/leshow/iron-tera"
 documentation = "https://docs.rs/iron-tera/"
 keywords = ["iron", "tera", "middleware", "templating"]
 license = "MIT"
-exclude = ["src/test_template"]
+exclude = ["src/test_template", "examples/"]
 
 [dependencies]
 iron = "0.6.0"
