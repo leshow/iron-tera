@@ -147,23 +147,23 @@ impl TemplateMode {
         TemplateMode::TeraContext(context)
     }
 
-    pub fn from_serial<S: Serialize>(serializeable: S) -> Result<TemplateMode, serde_json::Error> {
+    pub fn from_serial<S: Serialize>(serializeable: S) -> Result<TemplateMode, TemplateError> {
         Ok(TemplateMode::Serialized(to_value(serializeable)?))
     }
 }
-// #[cfg(not(feature = "unstable"))]
-// impl From<Context> for TemplateMode {
-//     fn from(context: Context) -> Self {
-//         TemplateMode::from_context(context)
-//     }
-// }
+#[cfg(not(feature = "unstable"))]
+impl From<Context> for TemplateMode {
+    fn from(context: Context) -> Self {
+        TemplateMode::from_context(context)
+    }
+}
 
-// #[cfg(not(feature = "unstable"))]
-// impl From<Value> for TemplateMode {
-//     fn from(serializeable: Value) -> Self {
-//         TemplateMode::from_serial(serializeable).unwrap()
-//     }
-// }
+#[cfg(not(feature = "unstable"))]
+impl From<Value> for TemplateMode {
+    fn from(serializeable: Value) -> Self {
+        TemplateMode::from_serial(serializeable).unwrap()
+    }
+}
 #[derive(Debug)]
 pub enum TemplateError {
     SerdeErr(serde_json::Error),
@@ -196,6 +196,7 @@ impl Error for TemplateError {
     }
 }
 
+#[cfg(feature = "unstable")]
 impl TryFrom<Value> for TemplateMode {
     type Error = TemplateError;
     fn try_from(serialize: Value) -> Result<Self, Self::Error> {
@@ -203,6 +204,7 @@ impl TryFrom<Value> for TemplateMode {
     }
 }
 
+#[cfg(feature = "unstable")]
 impl TryFrom<Context> for TemplateMode {
     type Error = TemplateError;
     fn try_from(serialize: Context) -> Result<Self, Self::Error> {
@@ -218,16 +220,17 @@ pub struct Template {
 }
 
 impl Template {
-    // #[cfg(not(feature = "unstable"))]
-    // pub fn new<T: Into<TemplateMode>, S: Into<String>>(name: S, mode: T) -> Template {
-    //     Template {
-    //         name: name.into(),
-    //         mode: mode.into(),
-    //     }
-    // }
-    pub fn new<T, S>(name: S, mode: T) -> Result<Template, serde_json::Error>
+    #[cfg(not(feature = "unstable"))]
+    pub fn new<T: Into<TemplateMode>, S: Into<String>>(name: S, mode: T) -> Template {
+        Template {
+            name: name.into(),
+            mode: mode.into(),
+        }
+    }
+    #[cfg(feature = "unstable")]
+    pub fn new<T, S>(name: S, mode: T) -> Result<Template, TemplateError>
     where
-        serde_json::Error: From<<T as TryInto<TemplateMode>>::Error>,
+        TemplateError: From<<T as TryInto<TemplateMode>>::Error>,
         S: Into<String>,
         T: TryInto<TemplateMode>,
     {

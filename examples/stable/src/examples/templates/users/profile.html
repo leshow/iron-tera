@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+    Hello {{ username }}
+    {{ bio }}
+    {% for n in numbers %}
+        <p>{{n}}</p>
+    {% endfor %}
+{% endblock content %}
