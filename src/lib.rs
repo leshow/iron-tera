@@ -1,14 +1,18 @@
-//! Please contact me on github and file any issues if you find some, I'm also open to PRs or other suggestions.
+//! Please contact me on github and file any issues if you find some, I'm also
+//! open to PRs or other suggestions.
 //!
 //! Updated to Tera 0.11 / Serde 1.0 / Iron 0.5 !
-//! Serde 1.0 to_value returns a `Result`, this means you need to handle the possiblity of a serialization failure.
-//! If you just want to `unwrap()` there is an implementation of From<Value> for TemplateMode so `Template::new(path, value)`
-//! works also. This is the implementation that's on 'stable'.
+//! Serde 1.0 to_value returns a `Result`, this means you need to handle the
+//! possiblity of a serialization failure. If you just want to `unwrap()` there
+//! is an implementation of From<Value> for TemplateMode so `Template::new(path,
+//! value)` works also. This is the implementation that's on 'stable'.
 //!
-//! You can try the unstable crate feature which uses `TryFrom`/`TryInto` to make `Template::new` polymorphic over `Context` and `Value`.
+//! You can try the unstable crate feature which uses `TryFrom`/`TryInto` to
+//! make `Template::new` polymorphic over `Context` and `Value`.
 //!
-//! **update iron-tera-0.5.0**: If you build this crate with feature = "unstable" on the nightly compiler,
-//! I've included a `TryFrom` impl to improve API ergonomics.
+//! **update iron-tera-0.5.0**: If you build this crate with feature =
+//! "unstable" on the nightly compiler, I've included a `TryFrom` impl to
+//! improve API ergonomics.
 //!
 //! ## Examples
 //! Full examples ON GITHUB for both stable and unstable.
@@ -108,29 +112,21 @@
 //! }
 //! ```
 #![cfg_attr(feature = "unstable", feature(try_from))]
-#![allow(dead_code)]
-#[macro_use]
-extern crate serde_json;
+
 #[macro_use]
 extern crate tera;
-extern crate iron;
-extern crate plugin;
-extern crate serde;
 
-use iron::headers::ContentType;
-use iron::modifier::Modifier;
-use iron::prelude::*;
-use iron::{status, typemap, AfterMiddleware};
-
+use iron::{
+    headers::ContentType, modifier::Modifier, prelude::*, status, typemap, AfterMiddleware,
+};
 use plugin::Plugin;
-
 use serde::ser::Serialize;
 use serde_json::{to_value, Value};
-
-use std::convert::{TryFrom, TryInto};
 use std::error::Error;
-
 use tera::{Context, Tera};
+
+#[cfg(feature = "unstable")]
+use std::convert::{TryFrom, TryInto};
 
 /// There are 2 main ways to pass data to generate a template.
 #[derive(Clone, Debug)]
@@ -152,6 +148,7 @@ impl TemplateMode {
         Ok(TemplateMode::Serialized(to_value(serializeable)?))
     }
 }
+
 #[cfg(not(feature = "unstable"))]
 impl From<Context> for TemplateMode {
     fn from(context: Context) -> Self {
@@ -192,28 +189,32 @@ impl Error for TemplateError {
             TemplateError::ContextErr() => "Context Error",
         }
     }
+
     fn cause(&self) -> Option<&Error> {
         None
     }
 }
-
+/// TryFrom implementation for a serde `Value`, it's possible for this to fail
 #[cfg(feature = "unstable")]
 impl TryFrom<Value> for TemplateMode {
     type Error = TemplateError;
+
     fn try_from(serialize: Value) -> Result<Self, Self::Error> {
         TemplateMode::from_serial(serialize)
     }
 }
-
+/// TryFrom implementation for a Context, this can fail
 #[cfg(feature = "unstable")]
 impl TryFrom<Context> for TemplateMode {
     type Error = TemplateError;
+
     fn try_from(serialize: Context) -> Result<Self, Self::Error> {
         Ok(TemplateMode::from_context(serialize))
     }
 }
 
-/// Our template holds a name (path to template) and a mode (constructed with `from_context` or `from_serial`)
+/// Our template holds a name (path to template) and a mode (constructed with
+/// `from_context` or `from_serial`)
 #[derive(Clone, Debug)]
 pub struct Template {
     mode: TemplateMode,
@@ -228,6 +229,9 @@ impl Template {
             mode: mode.into(),
         }
     }
+
+    /// Using TryFrom will not hide the possibility of template rendering
+    /// failing
     #[cfg(feature = "unstable")]
     pub fn new<T, S>(name: S, mode: T) -> Result<Template, TemplateError>
     where
@@ -243,12 +247,14 @@ impl Template {
     }
 }
 
-/// TeraEngine holds the Tera struct so that it can be used by many handlers without explicitly passing
+/// TeraEngine holds the Tera struct so that it can be used by many handlers
+/// without explicitly passing
 pub struct TeraEngine {
     pub tera: Tera,
 }
 
-/// `compile_templates!` is used to parse the contents of a dir for all templates.
+/// `compile_templates!` is used to parse the contents of a dir for all
+/// templates.
 impl TeraEngine {
     /// Take a `String` and convert to a slice
     pub fn new<S: AsRef<str>>(dir: S) -> TeraEngine {
@@ -270,11 +276,12 @@ impl Modifier<Response> for Template {
 
 /// The middleware implementation for TeraEngine
 impl AfterMiddleware for TeraEngine {
-    /// This is where all the magic happens. We extract `TeraEngine` from Iron's `Response`,
-    /// determine what `TemplateMode` we should render in, and pass the appropriate values to
-    /// tera's render methods.
+    /// This is where all the magic happens. We extract `TeraEngine` from Iron's
+    /// `Response`, determine what `TemplateMode` we should render in, and
+    /// pass the appropriate values to tera's render methods.
     fn after(&self, _: &mut Request, mut resp: Response) -> IronResult<Response> {
-        let wrapper = resp.extensions
+        let wrapper = resp
+            .extensions
             .remove::<TeraEngine>()
             .and_then(|t| match t.mode {
                 TemplateMode::TeraContext(ref context) => Some(self.tera.render(&t.name, context)),
@@ -326,7 +333,7 @@ mod tests {
 
     #[test]
     fn test_from_context() {
-        let mut resp = from_context_response().ok().expect("response expected");
+        let mut resp = from_context_response().expect("response expected");
         match resp.get::<TeraEngine>() {
             Ok(h) => {
                 assert_eq!(h.name, "./test_template/users/foo.html".to_string());

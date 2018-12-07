@@ -46,13 +46,14 @@ fn user_handler(_: &mut Request) -> IronResult<Response> {
     let mut context = Context::new();
     context.add("username", &"Bob");
     context.add("my_var", &"Thing"); // comment out to see alternate thing
-    context.add("numbers", &vec![1, 2, 3]);
+    context.add("numbers", &[1, 2, 3]);
     context.add("bio", &"<script>alert('pwnd');</script>");
 
     resp.set_mut(Template::new(
         "users/profile.html",
         TemplateMode::from_context(context),
-    )).set_mut(status::Ok);
+    ))
+    .set_mut(status::Ok);
     Ok(resp)
 }
 
@@ -63,7 +64,7 @@ fn produce_handler(_: &mut Request) -> IronResult<Response> {
     let user = User {
         username: "Bob",
         my_var: "Thing",
-        numbers: &vec![1, 2, 3],
+        numbers: &[1, 2, 3],
         bio: "<script>alert('pwnd');</script>",
     };
     match serde_json::to_value(user) {
@@ -83,22 +84,16 @@ fn produce_handler(_: &mut Request) -> IronResult<Response> {
 fn blob_handler(_: &mut Request) -> IronResult<Response> {
     let mut resp = Response::new();
 
-    let user = User {
-        username: "Bob",
-        my_var: "Thing",
-        numbers: &vec![1, 2, 3],
-        bio: "<script>alert('pwnd');</script>",
-    };
     let blob = json!({
-             "username": "John Doe",
-             "my_var": "Thing",
-             "numbers": [
-                 "1",
-                 "+44 2345678",
-                "3"
-             ],
-             "bio": "<script>alert('pwnd');</script>"
-          });
+       "username": "John Doe",
+       "my_var": "Thing",
+       "numbers": [
+           "1",
+           "+44 2345678",
+          "3"
+       ],
+       "bio": "<script>alert('pwnd');</script>"
+    });
     // you can use blob.try_into() and handle the `Result` explicitly (not shown here)
     // on the `unstable` feature of `iron-tera`
     resp.set_mut(Template::new("users/profile.html", blob))

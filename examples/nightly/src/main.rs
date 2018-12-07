@@ -46,7 +46,7 @@ fn user_handler(_: &mut Request) -> IronResult<Response> {
     let mut context = Context::new();
     context.add("username", &"Bob");
     context.add("my_var", &"Thing"); // comment out to see alternate thing
-    context.add("numbers", &vec![1, 2, 3]);
+    context.add("numbers", &[1, 2, 3]);
     context.add("bio", &"<script>alert('pwnd');</script>");
 
     match Template::new("users/profile.html", context) {
@@ -68,7 +68,7 @@ fn produce_handler(_: &mut Request) -> IronResult<Response> {
     let user = User {
         username: "Bob",
         my_var: "Thing",
-        numbers: &vec![1, 2, 3],
+        numbers: &[1, 2, 3],
         bio: "<script>alert('pwnd');</script>",
     };
     match serde_json::to_value(user) {
